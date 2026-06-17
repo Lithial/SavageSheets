@@ -110,8 +110,15 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
         lastError: null,
 
         load: async () => {
-          const roster = await tracked('Load failed', () => deps.repo.list());
-          set((s) => { s.roster = roster; });
+          const loaded = await tracked('Load failed', () => deps.repo.list());
+          set((s) => {
+            // Keep any in-memory characters created while this load was in
+            // flight: their id is absent from the loaded snapshot, so without
+            // this guard a slow initial load would clobber a just-created
+            // (and already-persisted) character back out of the roster.
+            const loadedIds = new Set(loaded.map((c) => c.id));
+            s.roster = [...s.roster.filter((c) => !loadedIds.has(c.id)), ...loaded];
+          });
         },
 
         setActive: (id) => set((s) => { s.activeId = id; }),
