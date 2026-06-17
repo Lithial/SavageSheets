@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useCharacterStore } from '../store/characterStore';
 import { newId } from '../domain/defaults';
-import { parry, toughness, pace, findSkill } from '../domain/derived';
+import { parry, toughness, pace } from '../domain/derived';
 import type { AttributeKey } from '../domain/types';
 import { SheetHeader } from '../components/SheetHeader';
 import { DerivedBar } from '../components/DerivedBar';
@@ -80,7 +80,7 @@ export function SheetPage() {
           onAddSkill={() => update(id, (c) => { c.skills.push({ id: newId(), name: 'New Skill', attribute: 'smarts', die: { sides: 4, bonus: 0 } }); })}
           onRemoveSkill={(sid) => update(id, (c) => { c.skills = c.skills.filter((x) => x.id !== sid); })}
           onRoll={(sid) => {
-            const s = findSkill(character, character.skills.find((x) => x.id === sid)?.name ?? '');
+            const s = character.skills.find((x) => x.id === sid);
             if (s) rollTraitFor(id, s.name, s.die);
           }}
         />
