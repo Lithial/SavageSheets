@@ -337,9 +337,9 @@ describe('rollTrait', () => {
     expect(res.success).toBe(false);
   });
 
-  it('a single natural 1 is not a crit failure for an Extra (no wild die)', () => {
+  it('flags critical failure for an Extra (no wild die) on a single natural 1', () => {
     const res = rollTrait({ die: { sides: 6, bonus: 0 }, wild: false, tn: 4 }, facesRng([[6, 1]]));
-    expect(res.criticalFailure).toBe(false);
+    expect(res.criticalFailure).toBe(true);
   });
 
   it('applies negative modifiers (e.g. wound penalty)', () => {
@@ -2548,3 +2548,20 @@ Plan complete and saved to `docs/superpowers/plans/2026-06-17-savage-worlds-shee
 2. **Inline Execution** — execute tasks in this session via executing-plans, batched with checkpoints.
 
 Which approach?
+
+## Post-Implementation Notes (Slice 1)
+
+Implemented on branch `feat/savage-sheets-slice-1`. 42 tests pass; `tsc -b` + `vite build` clean; real-browser smoke verified (create / edit Vigor / roll / wound penalty / reload-persistence).
+
+Two plan corrections made during execution:
+- **Extra Critical Failure:** an Extra's lone natural 1 IS a Critical Failure (RAW SWADE). Task 2 Step 3's test was reconciled to expect `true` (the implementation code in Step 5 was already correct).
+- **`load()` contract:** changed from full-replace to a merge (DB wins per id, in-memory-only chars retained) to fix a mount-load race against an optimistic create; backward-compatible at cold start, documented in JSDoc and unit-pinned.
+
+Deferred to Slice 1.x (triaged Minor at final review, non-blocking):
+- GearPanel: per-weapon `damageDice` editor (currently the scaffold default die + flat bonus).
+- `importJson`: optional replace-vs-merge mode (currently additive upsert-by-id).
+- Zod schema: `.strict()` and numeric range checks on wounds/fatigue/bennies/quantity/armor.
+- Page tests: isolate the shared fake-indexeddb between cases (currently reset in-memory state only).
+- `formatDie`/`rollDie`: guards for negative bonus / non-standard sides (unreachable through typed callers today).
+- `load()` mid-session concurrency: a stale DB copy could win over an in-flight same-id edit (harmless for current mount-time-only usage).
+- `.tool-versions` pins `nodejs lts`, which asdf cannot resolve; commands need `ASDF_NODEJS_VERSION=<concrete>` until pinned to a concrete LTS.
