@@ -90,12 +90,12 @@ export const characterSchema = z.object({
   status,
   rollLog: z.array(rollLogEntry),
   updatedAt: z.number(),
-});
+}) satisfies z.ZodType<Character>;
 
 export const rosterSchema = z.array(characterSchema);
 
 export function parseCharacterValue(value: unknown): Character {
-  return characterSchema.parse(value) as Character;
+  return characterSchema.parse(value);
 }
 
 export function serializeRoster(roster: Character[]): string {
@@ -104,5 +104,5 @@ export function serializeRoster(roster: Character[]): string {
 
 export function parseRoster(json: string): Character[] {
   const data = JSON.parse(json);
-  return rosterSchema.parse(data) as Character[];
+  return rosterSchema.parse(data);
 }
