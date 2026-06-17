@@ -3,6 +3,7 @@ import { makeCharacterStore } from './characterStore';
 import { DexieCharacterRepository, type CharacterRepository } from '../persistence/repository';
 import { facesRng } from '../test/rng';
 import type { Character } from '../domain/types';
+import { blankCharacter } from '../domain/defaults';
 
 // Repo whose mutating operations always reject, to exercise the error contract.
 class FailingRepo implements CharacterRepository {
@@ -12,6 +13,18 @@ class FailingRepo implements CharacterRepository {
   remove(): Promise<void> { return Promise.reject(new Error('boom-remove')); }
   exportJson(): Promise<string> { return Promise.reject(new Error('boom-export')); }
   importJson(): Promise<Character[]> { return Promise.reject(new Error('boom-import')); }
+}
+
+// Repo whose list() returns a fixed snapshot, to exercise load()'s merge contract.
+class SnapshotRepo implements CharacterRepository {
+  private readonly snapshot: Character[];
+  constructor(snapshot: Character[]) { this.snapshot = snapshot; }
+  list(): Promise<Character[]> { return Promise.resolve(this.snapshot); }
+  get(id: string): Promise<Character | undefined> { return Promise.resolve(this.snapshot.find((c) => c.id === id)); }
+  put(): Promise<void> { return Promise.resolve(); }
+  remove(): Promise<void> { return Promise.resolve(); }
+  exportJson(): Promise<string> { return Promise.resolve('[]'); }
+  importJson(): Promise<Character[]> { return Promise.resolve([]); }
 }
 
 function fixedRng(faces: Array<[number, number]>) {
@@ -85,5 +98,33 @@ describe('characterStore error contract', () => {
     store.setState({ lastError: 'stale' });
     await store.getState().createCharacter();
     expect(store.getState().lastError).toBeNull();
+  });
+});
+
+describe('characterStore load() merge contract', () => {
+  it('retains an in-memory-only character and de-dupes ids present in the DB snapshot', async () => {
+    const memOnly = blankCharacter('In-Memory Only'); // never persisted
+    const shared = blankCharacter('Shared (stale in-memory)'); // also in the DB
+    const dbCopy: Character = { ...blankCharacter('Shared (DB)'), id: shared.id }; // same id, DB version
+    const dbOnly = blankCharacter('DB Only');
+
+    const store = makeCharacterStore({
+      repo: new SnapshotRepo([dbCopy, dbOnly]),
+      rng: () => 0.5,
+      now: () => 1000,
+    });
+    store.setState({ roster: [memOnly, shared] });
+
+    await store.getState().load();
+    const roster = store.getState().roster;
+
+    // In-memory-only character survives, pinned at the front (most-recent-first).
+    expect(roster.map((c) => c.id)).toEqual([memOnly.id, dbCopy.id, dbOnly.id]);
+    expect(roster.find((c) => c.id === memOnly.id)?.name).toBe('In-Memory Only');
+
+    // The shared id appears exactly once, with the DB copy winning the de-dupe.
+    const sharedEntries = roster.filter((c) => c.id === shared.id);
+    expect(sharedEntries).toHaveLength(1);
+    expect(sharedEntries[0].name).toBe('Shared (DB)');
   });
 });

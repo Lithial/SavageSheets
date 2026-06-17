@@ -37,6 +37,17 @@ export interface StoreState {
    */
   lastError: string | null;
 
+  /**
+   * Loads the persisted roster and MERGES it over the in-memory roster: each
+   * loaded entry replaces any in-memory entry with the same id (DB copy wins),
+   * and in-memory characters whose id is absent from the snapshot are RETAINED
+   * at the front (most-recent-first). This is intentionally not a full replace
+   * — a just-created, already-persisted character must survive an initial
+   * `load()` whose `repo.list()` resolved before that character was written.
+   * Trade-off: `load()` therefore does not reflect DB-side removal of an entry
+   * still held in memory. Safe today because all mutations route through the
+   * store and import is additive.
+   */
   load: () => Promise<void>;
   setActive: (id: string | null) => void;
 
