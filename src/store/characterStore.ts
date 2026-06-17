@@ -1,0 +1,184 @@
+import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import type { Character, TraitDie } from '../domain/types';
+import { MAX_FATIGUE, MAX_WOUNDS } from '../domain/types';
+import { blankCharacter, newId } from '../domain/defaults';
+import { rollTrait, rollDamage, type Rng } from '../domain/dice';
+import { formatTraitRoll, formatDamageRoll } from '../domain/format';
+import { traitPenalty } from '../domain/derived';
+import { characterRepository, type CharacterRepository } from '../persistence/repository';
+
+const LOG_LIMIT = 50;
+
+export interface StoreDeps {
+  repo: CharacterRepository;
+  rng: Rng;
+  now: () => number;
+}
+
+export interface RollTraitOptions {
+  wildOverride?: boolean;
+  modifier?: number;
+  tn?: number;
+}
+
+export interface StoreState {
+  roster: Character[];
+  activeId: string | null;
+  lastError: string | null;
+
+  load: () => Promise<void>;
+  setActive: (id: string | null) => void;
+
+  createCharacter: () => Promise<string>;
+  duplicateCharacter: (id: string) => Promise<string>;
+  deleteCharacter: (id: string) => Promise<void>;
+
+  update: (id: string, recipe: (c: Character) => void) => void;
+
+  addWound: (id: string) => void;
+  healWound: (id: string) => void;
+  setFatigue: (id: string, n: number) => void;
+  toggleShaken: (id: string) => void;
+  spendBenny: (id: string) => void;
+  addBenny: (id: string) => void;
+
+  rollTraitFor: (id: string, label: string, die: TraitDie, opts?: RollTraitOptions) => void;
+  rollWeaponDamage: (id: string, weaponId: string) => void;
+  clearLog: (id: string) => void;
+
+  importJson: (json: string) => Promise<void>;
+  exportJson: () => Promise<string>;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<StoreState>> {
+  const persist = (c: Character) => {
+    deps.repo.put(c).catch((err) => {
+      useStore.setState({ lastError: `Save failed: ${String(err)}` });
+    });
+  };
+
+  const useStore = create<StoreState>()(
+    immer((set, get) => {
+      // Apply an immer recipe to one character, stamp updatedAt, and persist.
+      const mutate = (id: string, recipe: (c: Character) => void) => {
+        let updated: Character | undefined;
+        set((state) => {
+          const c = state.roster.find((x) => x.id === id);
+          if (!c) return;
+          recipe(c);
+          c.updatedAt = deps.now();
+          updated = JSON.parse(JSON.stringify(c)) as Character; // plain copy for persistence
+        });
+        if (updated) persist(updated);
+      };
+
+      return {
+        roster: [],
+        activeId: null,
+        lastError: null,
+
+        load: async () => {
+          const roster = await deps.repo.list();
+          set((s) => { s.roster = roster; });
+        },
+
+        setActive: (id) => set((s) => { s.activeId = id; }),
+
+        createCharacter: async () => {
+          const c = blankCharacter();
+          set((s) => { s.roster.unshift(c); });
+          await deps.repo.put(c);
+          return c.id;
+        },
+
+        duplicateCharacter: async (id) => {
+          const src = get().roster.find((x) => x.id === id);
+          if (!src) throw new Error('character not found');
+          const copy: Character = JSON.parse(JSON.stringify(src));
+          copy.id = newId();
+          copy.name = `${src.name} (copy)`;
+          copy.updatedAt = deps.now();
+          set((s) => { s.roster.unshift(copy); });
+          await deps.repo.put(copy);
+          return copy.id;
+        },
+
+        deleteCharacter: async (id) => {
+          set((s) => {
+            s.roster = s.roster.filter((c) => c.id !== id);
+            if (s.activeId === id) s.activeId = null;
+          });
+          await deps.repo.remove(id);
+        },
+
+        update: (id, recipe) => mutate(id, recipe),
+
+        addWound: (id) => mutate(id, (c) => { c.status.wounds = clamp(c.status.wounds + 1, 0, MAX_WOUNDS); }),
+        healWound: (id) => mutate(id, (c) => { c.status.wounds = clamp(c.status.wounds - 1, 0, MAX_WOUNDS); }),
+        setFatigue: (id, n) => mutate(id, (c) => { c.status.fatigue = clamp(n, 0, MAX_FATIGUE); }),
+        toggleShaken: (id) => mutate(id, (c) => { c.status.shaken = !c.status.shaken; }),
+        spendBenny: (id) => mutate(id, (c) => { c.bennies = Math.max(0, c.bennies - 1); }),
+        addBenny: (id) => mutate(id, (c) => { c.bennies += 1; }),
+
+        rollTraitFor: (id, label, die, opts) => mutate(id, (c) => {
+          const wild = opts?.wildOverride ?? c.isWildCard;
+          const modifier = (opts?.modifier ?? 0) + traitPenalty(c.status);
+          const res = rollTrait({ die, wild, modifier, tn: opts?.tn ?? 4 }, deps.rng);
+          c.rollLog.unshift({
+            id: newId(),
+            at: deps.now(),
+            label,
+            kind: 'trait',
+            detail: formatTraitRoll(res),
+            total: res.total,
+            success: res.success,
+            raises: res.raises,
+            criticalFailure: res.criticalFailure,
+          });
+          c.rollLog = c.rollLog.slice(0, LOG_LIMIT);
+        }),
+
+        rollWeaponDamage: (id, weaponId) => mutate(id, (c) => {
+          const w = c.weapons.find((x) => x.id === weaponId);
+          if (!w) return;
+          const dice = w.addStrength ? [c.attributes.strength, ...w.damageDice] : [...w.damageDice];
+          const res = rollDamage(dice, w.damageBonus, deps.rng);
+          c.rollLog.unshift({
+            id: newId(),
+            at: deps.now(),
+            label: `${w.name || 'Weapon'} damage`,
+            kind: 'damage',
+            detail: formatDamageRoll(res),
+            total: res.total,
+            success: null,
+            raises: null,
+            criticalFailure: null,
+          });
+          c.rollLog = c.rollLog.slice(0, LOG_LIMIT);
+        }),
+
+        clearLog: (id) => mutate(id, (c) => { c.rollLog = []; }),
+
+        importJson: async (json) => {
+          const imported = await deps.repo.importJson(json);
+          await get().load();
+          set((s) => { s.lastError = null; });
+          void imported;
+        },
+
+        exportJson: () => deps.repo.exportJson(),
+      };
+    }),
+  );
+
+  return useStore;
+}
+
+export const useCharacterStore = makeCharacterStore({
+  repo: characterRepository,
+  rng: Math.random,
+  now: () => Date.now(),
+});
