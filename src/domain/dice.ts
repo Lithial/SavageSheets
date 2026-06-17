@@ -58,9 +58,10 @@ export function rollTrait(opts: TraitRollOptions, rng: Rng = Math.random): Trait
 
   const traitNat1 = trait.rolls[0] === 1;
   const wildNat1 = wild ? wild.rolls[0] === 1 : false;
-  // SWADE: a Critical Failure requires snake-eyes — a Wild Card showing natural 1 on BOTH
-  // the trait and Wild Die. An Extra (no Wild Die) rolling a single 1 is a plain failure.
-  const criticalFailure = opts.wild ? traitNat1 && wildNat1 : false;
+  // RAW SWADE: a Critical Failure occurs when more than half the dice show a natural 1.
+  // A Wild Card (2 dice) needs both the trait and Wild Die at 1 ("snake eyes"); an Extra
+  // (single die) critically fails on its lone natural 1.
+  const criticalFailure = opts.wild ? traitNat1 && wildNat1 : traitNat1;
 
   const success = !criticalFailure && total >= tn;
   const raises = success ? Math.floor((total - tn) / 4) : 0;

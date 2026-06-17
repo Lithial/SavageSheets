@@ -43,9 +43,10 @@ describe('rollTrait', () => {
     expect(res.success).toBe(false);
   });
 
-  it('a single natural 1 is not a crit failure for an Extra (no wild die)', () => {
+  it('flags critical failure for an Extra (no wild die) on a single natural 1', () => {
     const res = rollTrait({ die: { sides: 6, bonus: 0 }, wild: false, tn: 4 }, facesRng([[6, 1]]));
-    expect(res.criticalFailure).toBe(false);
+    expect(res.criticalFailure).toBe(true);
+    expect(res.success).toBe(false);
   });
 
   it('applies negative modifiers (e.g. wound penalty)', () => {
