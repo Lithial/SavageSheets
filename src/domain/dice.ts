@@ -60,10 +60,11 @@ export function rollTrait(opts: TraitRollOptions, rng: Rng = Math.random): Trait
   const wildNat1 = wild ? wild.rolls[0] === 1 : false;
   // RAW SWADE: a Critical Failure occurs when more than half the dice show a natural 1.
   // A Wild Card (2 dice) needs both the trait and Wild Die at 1 ("snake eyes"); an Extra
-  // (single die) critically fails on its lone natural 1. This resolves the brief's internal
-  // Step 3/Step 5 contradiction in favour of rules-correctness: the Step 5 implementation
-  // snippet already encoded this, and it is the dominant SWADE reading, so the Step 3 test
-  // (which expected a plain failure here) is the outlier and was corrected to match.
+  // (single die) critically fails on its lone natural 1. The brief's Step 5 implementation
+  // snippet already encoded this and it is the dominant SWADE reading, so the brief's Step 3
+  // test (which expected a plain failure here) was the outlier. The controller ratified the
+  // RAW resolution and reconciled the brief's Step 3 test to expect a Critical Failure, so
+  // the spec is now self-consistent (no behavioural change at this line).
   const criticalFailure = opts.wild ? traitNat1 && wildNat1 : traitNat1;
 
   const success = !criticalFailure && total >= tn;
