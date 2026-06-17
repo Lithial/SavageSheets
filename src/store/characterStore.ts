@@ -46,7 +46,10 @@ export interface StoreState {
    * `load()` whose `repo.list()` resolved before that character was written.
    * Trade-off: `load()` therefore does not reflect DB-side removal of an entry
    * still held in memory. Safe today because all mutations route through the
-   * store and import is additive.
+   * store and import is additive. `load()` is mount/import-time only: it
+   * treats the DB as the source of truth for shared ids and must NOT run
+   * concurrently with active editing, where a stale DB row for an in-flight,
+   * not-yet-flushed id would clobber fresher in-memory edits.
    */
   load: () => Promise<void>;
   setActive: (id: string | null) => void;
