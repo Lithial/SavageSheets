@@ -25,6 +25,16 @@ export interface RollTraitOptions {
 export interface StoreState {
   roster: Character[];
   activeId: string | null;
+  /**
+   * Most recent persistence (repository) outcome: `null` when the last persist
+   * succeeded, otherwise a human-readable error string. This is the single
+   * error channel — EVERY action that touches the repo clears it on success and
+   * sets it on failure, so the UI can rely on it alone. Awaited actions (load,
+   * createCharacter, duplicateCharacter, deleteCharacter, importJson)
+   * additionally reject so callers may handle failures programmatically;
+   * fire-and-forget play actions (addWound, spendBenny, rolls, ...) surface
+   * failures only through this field.
+   */
   lastError: string | null;
 
   load: () => Promise<void>;
@@ -55,9 +65,14 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 
 export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<StoreState>> {
   const persist = (c: Character) => {
-    deps.repo.put(c).catch((err) => {
-      useStore.setState({ lastError: `Save failed: ${String(err)}` });
-    });
+    deps.repo
+      .put(c)
+      .then(() => {
+        useStore.setState({ lastError: null });
+      })
+      .catch((err) => {
+        useStore.setState({ lastError: `Save failed: ${String(err)}` });
+      });
   };
 
   const useStore = create<StoreState>()(
@@ -75,13 +90,27 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
         if (updated) persist(updated);
       };
 
+      // Awaited repo operations mirror persist()'s contract: clear lastError on
+      // success, record it on failure, then rethrow so callers awaiting the
+      // returned promise can also react.
+      const tracked = async <T>(label: string, op: () => Promise<T>): Promise<T> => {
+        try {
+          const result = await op();
+          set((s) => { s.lastError = null; });
+          return result;
+        } catch (err) {
+          set((s) => { s.lastError = `${label}: ${String(err)}`; });
+          throw err;
+        }
+      };
+
       return {
         roster: [],
         activeId: null,
         lastError: null,
 
         load: async () => {
-          const roster = await deps.repo.list();
+          const roster = await tracked('Load failed', () => deps.repo.list());
           set((s) => { s.roster = roster; });
         },
 
@@ -90,7 +119,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
         createCharacter: async () => {
           const c = blankCharacter();
           set((s) => { s.roster.unshift(c); });
-          await deps.repo.put(c);
+          await tracked('Save failed', () => deps.repo.put(c));
           return c.id;
         },
 
@@ -102,7 +131,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
           copy.name = `${src.name} (copy)`;
           copy.updatedAt = deps.now();
           set((s) => { s.roster.unshift(copy); });
-          await deps.repo.put(copy);
+          await tracked('Save failed', () => deps.repo.put(copy));
           return copy.id;
         },
 
@@ -111,7 +140,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
             s.roster = s.roster.filter((c) => c.id !== id);
             if (s.activeId === id) s.activeId = null;
           });
-          await deps.repo.remove(id);
+          await tracked('Delete failed', () => deps.repo.remove(id));
         },
 
         update: (id, recipe) => mutate(id, recipe),
@@ -163,10 +192,10 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
         clearLog: (id) => mutate(id, (c) => { c.rollLog = []; }),
 
         importJson: async (json) => {
-          const imported = await deps.repo.importJson(json);
-          await get().load();
-          set((s) => { s.lastError = null; });
-          void imported;
+          await tracked('Import failed', async () => {
+            await deps.repo.importJson(json);
+            await get().load();
+          });
         },
 
         exportJson: () => deps.repo.exportJson(),

@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { makeCharacterStore } from './characterStore';
-import { DexieCharacterRepository } from '../persistence/repository';
+import { DexieCharacterRepository, type CharacterRepository } from '../persistence/repository';
 import { facesRng } from '../test/rng';
+import type { Character } from '../domain/types';
+
+// Repo whose mutating operations always reject, to exercise the error contract.
+class FailingRepo implements CharacterRepository {
+  list(): Promise<Character[]> { return Promise.reject(new Error('boom-list')); }
+  get(): Promise<Character | undefined> { return Promise.resolve(undefined); }
+  put(): Promise<void> { return Promise.reject(new Error('boom-put')); }
+  remove(): Promise<void> { return Promise.reject(new Error('boom-remove')); }
+  exportJson(): Promise<string> { return Promise.reject(new Error('boom-export')); }
+  importJson(): Promise<Character[]> { return Promise.reject(new Error('boom-import')); }
+}
 
 function fixedRng(faces: Array<[number, number]>) {
   return facesRng(faces);
@@ -49,5 +60,30 @@ describe('characterStore', () => {
     expect(entry.total).toBe(4);
     expect(entry.label).toBe('Agility');
     expect(entry.kind).toBe('trait');
+  });
+});
+
+describe('characterStore error contract', () => {
+  it('surfaces awaited persistence failures through lastError and still rejects', async () => {
+    const store = makeCharacterStore({ repo: new FailingRepo(), rng: () => 0.5, now: () => 1000 });
+
+    await expect(store.getState().createCharacter()).rejects.toThrow('boom-put');
+    expect(store.getState().lastError).toContain('boom-put');
+
+    await expect(store.getState().deleteCharacter('x')).rejects.toThrow('boom-remove');
+    expect(store.getState().lastError).toContain('boom-remove');
+
+    await expect(store.getState().load()).rejects.toThrow('boom-list');
+    expect(store.getState().lastError).toContain('boom-list');
+
+    await expect(store.getState().importJson('[]')).rejects.toThrow('boom-import');
+    expect(store.getState().lastError).toContain('boom-import');
+  });
+
+  it('clears lastError after a subsequent successful persistence', async () => {
+    const { store } = setup();
+    store.setState({ lastError: 'stale' });
+    await store.getState().createCharacter();
+    expect(store.getState().lastError).toBeNull();
   });
 });
