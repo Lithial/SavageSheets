@@ -50,9 +50,9 @@ Athletics, Common Knowledge, Notice, Persuasion, Stealth. Users add/remove other
 - **Pace:** base 6 (running die `d6`).
 - **Parry:** `2 + floor(Fighting die step / 2)`; if no Fighting skill, `2`.
 - **Toughness:** `2 + floor(Vigor die step / 2) + armor`.
-- **Load Limit:** `5 × Strength die step` (Phase 2; encumbrance deferred).
+- **Load Limit:** `5 × Strength die step` (Slice 3; encumbrance deferred).
 - **Rank:** derived from advance count — Novice 0–3, Seasoned 4–7, Veteran 8–11,
-  Heroic 12–15, Legendary 16+ (advance tracking is Phase 2).
+  Heroic 12–15, Legendary 16+ (advance tracking is Slice 3).
 
 > "Die step" = 1 for d4, 2 for d6, 3 for d8, 4 for d10, 5 for d12 (then +1/+2 for d12+x).
 
@@ -75,7 +75,7 @@ names-only scaffolding the user completes.
 - **Armor:** name, armor value, location/notes; feeds Toughness.
 - **General gear:** name, quantity, notes.
 
-### Powers / Arcane Background (Phase 2)
+### Powers / Arcane Background (Slice 2)
 Power Points, arcane skill, known Powers (name, PP cost, range, duration, notes).
 Optional per character.
 
@@ -141,20 +141,25 @@ appends to the roll log -> toast.
 
 ## 7. Scope
 
-### Phase 1 — implementation target of this spec
+### Slice 1 — implementation target of this spec
 Roster CRUD + JSON import/export; full build/edit (attributes, skills,
 edges/hindrances, gear); auto derived stats; dice engine + trait/damage rolls with a
 log; live status trackers (Shaken/Wounds/Fatigue) and Bennies; Wild Card/Extra toggle.
 
-### Phase 2 — deferred (noted, not built)
-Powers / Arcane Background; Advances log + Rank tracking; point-buy character-creation
-validator (attribute/skill/hindrance points); encumbrance / Load Limit; curated
-mechanics-only starter datasets.
+### Slice 2 — Powers / Arcane Backgrounds
+Power Points, arcane skill, known Powers (name, PP cost, range, duration, notes);
+per-character Arcane Background toggle.
 
-### Phase 3 — later
+### Slice 3 — Progression & creation polish
+Advances log + Rank tracking; point-buy character-creation validator
+(attribute/skill/hindrance points); encumbrance / Load Limit; curated mechanics-only
+starter datasets.
+
+### Later
 Cloud sync (via the persistence interface) and a live GM view; theming.
 
-## 8. Open questions for review
-1. SWADE confirmed as the target edition (vs. Savage Worlds Deluxe / a specific setting)?
-2. Is single-user local-first acceptable for v1, or is cross-device/GM-sharing required up front?
-3. Any must-have Phase-1 feature currently parked in Phase 2 (Powers? Advances?)?
+## 8. Decisions (resolved at review)
+1. **Edition:** SWADE.
+2. **Architecture:** single-user, local-first for v1 (Approach A); the persistence
+   interface keeps cloud sync reachable later without a rewrite.
+3. **Slicing:** Powers / Arcane Backgrounds = Slice 2; Advances / Rank = Slice 3.
