@@ -219,7 +219,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
           });
         },
 
-        exportJson: () => deps.repo.exportJson(),
+        exportJson: () => tracked('Export failed', () => deps.repo.exportJson()),
       };
     }),
   );

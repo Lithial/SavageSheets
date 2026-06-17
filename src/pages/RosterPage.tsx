@@ -17,13 +17,17 @@ export function RosterPage() {
   useEffect(() => { void load(); }, [load]);
 
   const onExport = async () => {
-    const json = await exportJson();
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'savage-worlds-roster.json';
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const json = await exportJson();
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'savage-worlds-roster.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      useCharacterStore.setState({ lastError: `Export failed: ${String(err)}` });
+    }
   };
 
   const onImportFile = async (file: File) => {
