@@ -48,13 +48,13 @@ Athletics, Common Knowledge, Notice, Persuasion, Stealth. Users add/remove other
 
 ### Derived stats (auto-calculated)
 - **Pace:** base 6 (running die `d6`).
-- **Parry:** `2 + floor(Fighting die step / 2)`; if no Fighting skill, `2`.
-- **Toughness:** `2 + floor(Vigor die step / 2) + armor`.
-- **Load Limit:** `5 × Strength die step` (Slice 3; encumbrance deferred).
+- **Parry:** `2 + half the Fighting die` (half = sides ÷ 2: d4→2 … d12→6, +1 per step above d12); if no Fighting skill, `2`.
+- **Toughness:** `2 + half the Vigor die + armor`.
+- **Load Limit:** Slice 3 (encumbrance deferred; exact SWADE formula confirmed then).
 - **Rank:** derived from advance count — Novice 0–3, Seasoned 4–7, Veteran 8–11,
   Heroic 12–15, Legendary 16+ (advance tracking is Slice 3).
 
-> "Die step" = 1 for d4, 2 for d6, 3 for d8, 4 for d10, 5 for d12 (then +1/+2 for d12+x).
+> "Half a die" = sides ÷ 2 → d4→2, d6→3, d8→4, d10→5, d12→6 (then +1/+2 for d12+1/+2). "Die step" (advance/cost math, Slice 3) = 1 for d4 … 5 for d12.
 
 ### Status & resources (live during play)
 - **Shaken:** boolean.
