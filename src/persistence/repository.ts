@@ -26,12 +26,14 @@ export class DexieCharacterRepository implements CharacterRepository {
     this.db = new CharacterDb(dbName);
   }
 
-  list(): Promise<Character[]> {
-    return this.db.characters.orderBy('updatedAt').reverse().toArray();
+  async list(): Promise<Character[]> {
+    const rows = await this.db.characters.orderBy('updatedAt').reverse().toArray();
+    return rows.map(parseCharacterValue);
   }
 
-  get(id: string): Promise<Character | undefined> {
-    return this.db.characters.get(id);
+  async get(id: string): Promise<Character | undefined> {
+    const row = await this.db.characters.get(id);
+    return row ? parseCharacterValue(row) : undefined;
   }
 
   async put(character: Character): Promise<void> {

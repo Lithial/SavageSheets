@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import Dexie from 'dexie';
 import { DexieCharacterRepository } from './repository';
 import { blankCharacter } from '../domain/defaults';
 
@@ -38,5 +39,27 @@ describe('DexieCharacterRepository', () => {
   it('rejects an invalid import without writing', async () => {
     await expect(repo.importJson('[{"bad":true}]')).rejects.toThrow();
     expect(await repo.list()).toHaveLength(0);
+  });
+
+  it('migrates v1 characters on the read path (list and get)', async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    // Seed a RAW Dexie database with a v1-shaped character lacking arcaneBackground.
+    const raw = new Dexie(name);
+    raw.version(1).stores({ characters: 'id, name, updatedAt' });
+    const v1 = { ...blankCharacter('Legacy'), schemaVersion: 1 } as Record<string, unknown>;
+    delete v1.arcaneBackground;
+    await raw.table('characters').bulkPut([v1]);
+    raw.close();
+
+    const migratedRepo = new DexieCharacterRepository(name);
+    const id = v1.id as string;
+
+    const [listed] = await migratedRepo.list();
+    expect(listed.arcaneBackground).toBeNull();
+    expect(listed.schemaVersion).toBe(2);
+
+    const fetched = await migratedRepo.get(id);
+    expect(fetched?.arcaneBackground).toBeNull();
+    expect(fetched?.schemaVersion).toBe(2);
   });
 });

@@ -239,7 +239,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
             { die: ab.arcaneSkillDie, wild: c.isWildCard, modifier: traitPenalty(c.status), tn: 4 },
             deps.rng,
           );
-          ab.powerPoints.current = Math.max(0, ab.powerPoints.current - power.ppCost);
+          ab.powerPoints.current -= power.ppCost;
           c.rollLog.unshift({
             id: newId(),
             at: deps.now(),
