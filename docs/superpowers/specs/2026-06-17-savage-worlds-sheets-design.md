@@ -141,7 +141,7 @@ appends to the roll log -> toast.
 
 ## 7. Scope
 
-### Slice 1 — implementation target of this spec
+### Slice 1 — SHIPPED
 Roster CRUD + JSON import/export; full build/edit (attributes, skills,
 edges/hindrances, gear); auto derived stats; dice engine + trait/damage rolls with a
 log; live status trackers (Shaken/Wounds/Fatigue) and Bennies; Wild Card/Extra toggle.
@@ -154,6 +154,14 @@ per-character Arcane Background toggle.
 Advances log + Rank tracking; point-buy character-creation validator
 (attribute/skill/hindrance points); encumbrance / Load Limit; curated mechanics-only
 starter datasets.
+
+### Slice 4 — Edges/Hindrances that modify stats
+Let Edges (Savage Worlds "advantages") and Hindrances carry **mechanical modifiers**
+that feed the derived-stat layer and the roll pipeline — e.g. +1 Toughness / Parry /
+Pace, +1 to a named skill or attribute roll, ± Bennies — instead of being free-text
+only. Today `EdgeOrHindrance` is `name/type/severity/notes`; this adds an optional
+structured `modifiers` list consumed by `derived.ts` (parry/toughness/pace) and the
+store's roll modifier. (Placement flexible; may fold into Slice 3 creation work.)
 
 ### Later
 Cloud sync (via the persistence interface) and a live GM view; theming.
