@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { serializeRoster, parseRoster } from './schema';
 import { blankCharacter } from '../domain/defaults';
 import { blankArcaneBackground, newPower } from '../domain/defaults';
+import { newStatModifier } from '../domain/defaults';
 
 describe('roster serialization', () => {
   it('round-trips a roster through serialize -> parse unchanged', () => {
@@ -39,6 +40,26 @@ describe('arcane background persistence', () => {
     v1[0].schemaVersion = 1;
     const back = parseRoster(JSON.stringify(v1));
     expect(back[0].arcaneBackground).toBeNull();
-    expect(back[0].schemaVersion).toBe(2);
+    expect(back[0].schemaVersion).toBe(3);
+  });
+});
+
+describe('stat modifier persistence', () => {
+  it('round-trips an edge with a modifier', () => {
+    const c = blankCharacter('Mod');
+    c.edgesHindrances.push({ id: 'e1', name: 'Brawny', type: 'edge', severity: null, notes: '', modifiers: [newStatModifier()] });
+    const back = parseRoster(serializeRoster([c]));
+    expect(back).toEqual([c]);
+  });
+
+  it('migrates a v2 character (edges without modifiers) to v3', () => {
+    const c = blankCharacter('Old2');
+    c.edgesHindrances.push({ id: 'e1', name: 'Quick', type: 'edge', severity: null, notes: '', modifiers: [] });
+    const v2 = JSON.parse(serializeRoster([c])) as Array<Record<string, unknown>>;
+    v2[0].schemaVersion = 2;
+    delete (v2[0].edgesHindrances as Array<Record<string, unknown>>)[0].modifiers;
+    const back = parseRoster(JSON.stringify(v2));
+    expect(back[0].schemaVersion).toBe(3);
+    expect(back[0].edgesHindrances[0].modifiers).toEqual([]);
   });
 });

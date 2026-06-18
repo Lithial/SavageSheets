@@ -15,12 +15,20 @@ const skill = z.object({
   die: traitDie,
 });
 
+const statModifier = z.object({
+  id: z.string(),
+  target: z.enum(['parry', 'toughness', 'pace', 'trait']),
+  traitName: z.string(),
+  value: z.number().int(),
+});
+
 const edgeOrHindrance = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(['edge', 'hindrance']),
   severity: z.enum(['minor', 'major']).nullable(),
   notes: z.string(),
+  modifiers: z.array(statModifier),
 });
 
 const weapon = z.object({
@@ -112,15 +120,28 @@ export const characterSchema = z.object({
 
 export const rosterSchema = z.array(characterSchema);
 
-// Backfill fields added after schemaVersion 1 so old data validates and upgrades.
+// Backfill fields added after schemaVersion 1 so old data validates and upgrades to v3.
 function migrateCharacter(value: unknown): unknown {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const v = value as Record<string, unknown>;
-    if (!('arcaneBackground' in v)) {
-      return { ...v, arcaneBackground: null, schemaVersion: 2 };
-    }
-  }
-  return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const v = value as Record<string, unknown>;
+  const needsAB = !('arcaneBackground' in v);
+  const edges = Array.isArray(v.edgesHindrances) ? (v.edgesHindrances as unknown[]) : null;
+  const needsEdgeMods = edges?.some(
+    (e) => e !== null && typeof e === 'object' && !('modifiers' in (e as Record<string, unknown>)),
+  ) ?? false;
+  if (!needsAB && !needsEdgeMods && v.schemaVersion === 3) return value;
+  return {
+    ...v,
+    arcaneBackground: needsAB ? null : v.arcaneBackground,
+    edgesHindrances: edges
+      ? edges.map((e) =>
+          e !== null && typeof e === 'object' && !('modifiers' in (e as Record<string, unknown>))
+            ? { ...(e as Record<string, unknown>), modifiers: [] }
+            : e,
+        )
+      : v.edgesHindrances,
+    schemaVersion: 3,
+  };
 }
 
 export function parseCharacterValue(value: unknown): Character {

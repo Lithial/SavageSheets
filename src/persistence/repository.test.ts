@@ -56,10 +56,10 @@ describe('DexieCharacterRepository', () => {
 
     const [listed] = await migratedRepo.list();
     expect(listed.arcaneBackground).toBeNull();
-    expect(listed.schemaVersion).toBe(2);
+    expect(listed.schemaVersion).toBe(3);
 
     const fetched = await migratedRepo.get(id);
     expect(fetched?.arcaneBackground).toBeNull();
-    expect(fetched?.schemaVersion).toBe(2);
+    expect(fetched?.schemaVersion).toBe(3);
   });
 });
