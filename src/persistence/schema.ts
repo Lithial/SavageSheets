@@ -50,6 +50,23 @@ const gearItem = z.object({
   notes: z.string(),
 });
 
+const power = z.object({
+  id: z.string(),
+  name: z.string(),
+  ppCost: z.number().int(),
+  range: z.string(),
+  duration: z.string(),
+  notes: z.string(),
+});
+
+const arcaneBackground = z.object({
+  name: z.string(),
+  arcaneSkillName: z.string(),
+  arcaneSkillDie: traitDie,
+  powerPoints: z.object({ current: z.number().int(), max: z.number().int() }),
+  powers: z.array(power),
+});
+
 const status = z.object({
   shaken: z.boolean(),
   wounds: z.number().int(),
@@ -89,13 +106,25 @@ export const characterSchema = z.object({
   gear: z.array(gearItem),
   status,
   rollLog: z.array(rollLogEntry),
+  arcaneBackground: arcaneBackground.nullable(),
   updatedAt: z.number(),
 }) satisfies z.ZodType<Character>;
 
 export const rosterSchema = z.array(characterSchema);
 
+// Backfill fields added after schemaVersion 1 so old data validates and upgrades.
+function migrateCharacter(value: unknown): unknown {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const v = value as Record<string, unknown>;
+    if (!('arcaneBackground' in v)) {
+      return { ...v, arcaneBackground: null, schemaVersion: 2 };
+    }
+  }
+  return value;
+}
+
 export function parseCharacterValue(value: unknown): Character {
-  return characterSchema.parse(value);
+  return characterSchema.parse(migrateCharacter(value));
 }
 
 export function serializeRoster(roster: Character[]): string {
@@ -104,5 +133,6 @@ export function serializeRoster(roster: Character[]): string {
 
 export function parseRoster(json: string): Character[] {
   const data = JSON.parse(json);
-  return rosterSchema.parse(data);
+  const migrated = Array.isArray(data) ? data.map(migrateCharacter) : data;
+  return rosterSchema.parse(migrated);
 }
