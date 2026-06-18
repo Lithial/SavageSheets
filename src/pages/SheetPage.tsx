@@ -60,7 +60,7 @@ export function SheetPage() {
         onAddBenny={() => addBenny(id)}
       />
 
-      <DerivedBar parry={parry(character)} toughness={toughness(character)} pace={pace()} />
+      <DerivedBar parry={parry(character)} toughness={toughness(character)} pace={pace(character)} />
 
       <StatusTracker
         status={character.status}
