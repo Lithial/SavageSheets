@@ -40,3 +40,22 @@ describe('SheetPage', () => {
     });
   });
 });
+
+describe('SheetPage — powers', () => {
+  it('casts a power from the sheet, spending PP and logging it', async () => {
+    const c = blankCharacter('Mage');
+    c.arcaneBackground = {
+      name: 'Magic', arcaneSkillName: 'Spellcasting', arcaneSkillDie: { sides: 6, bonus: 0 },
+      powerPoints: { current: 5, max: 10 },
+      powers: [{ id: 'p1', name: 'Bolt', ppCost: 2, range: '', duration: '', notes: '' }],
+    };
+    useCharacterStore.setState({ roster: [c], activeId: c.id });
+    renderAt(c.id);
+    await userEvent.click(await screen.findByRole('button', { name: /cast bolt/i }));
+    await waitFor(() => {
+      const cc = useCharacterStore.getState().roster.find((x) => x.id === c.id)!;
+      expect(cc.arcaneBackground!.powerPoints.current).toBe(3);
+      expect(cc.rollLog[0].label).toBe('Bolt');
+    });
+  });
+});

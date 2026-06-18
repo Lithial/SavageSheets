@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useCharacterStore } from '../store/characterStore';
-import { newId } from '../domain/defaults';
+import { newId, blankArcaneBackground, newPower } from '../domain/defaults';
 import { parry, toughness, pace } from '../domain/derived';
 import type { AttributeKey } from '../domain/types';
 import { SheetHeader } from '../components/SheetHeader';
@@ -11,6 +11,7 @@ import { AttributesPanel } from '../components/AttributesPanel';
 import { SkillsPanel } from '../components/SkillsPanel';
 import { EdgesHindrancesPanel } from '../components/EdgesHindrancesPanel';
 import { GearPanel } from '../components/GearPanel';
+import { PowersPanel } from '../components/PowersPanel';
 import { DiceLog } from '../components/DiceLog';
 
 const ATTR_LABEL: Record<AttributeKey, string> = {
@@ -31,6 +32,10 @@ export function SheetPage() {
   const rollTraitFor = useCharacterStore((s) => s.rollTraitFor);
   const rollWeaponDamage = useCharacterStore((s) => s.rollWeaponDamage);
   const clearLog = useCharacterStore((s) => s.clearLog);
+  const spendPP = useCharacterStore((s) => s.spendPP);
+  const restorePP = useCharacterStore((s) => s.restorePP);
+  const resetPP = useCharacterStore((s) => s.resetPP);
+  const castPower = useCharacterStore((s) => s.castPower);
 
   useEffect(() => { if (!character) void load(); }, [character, load]);
 
@@ -112,6 +117,33 @@ export function SheetPage() {
         onAddGear={() => update(id, (c) => { c.gear.push({ id: newId(), name: 'New Item', quantity: 1, notes: '' }); })}
         onChangeGear={(gid, patch) => update(id, (c) => { const g = c.gear.find((x) => x.id === gid); if (g) Object.assign(g, patch); })}
         onRemoveGear={(gid) => update(id, (c) => { c.gear = c.gear.filter((x) => x.id !== gid); })}
+      />
+
+      <PowersPanel
+        arcaneBackground={character.arcaneBackground}
+        onAddArcaneBackground={() => update(id, (c) => { c.arcaneBackground = blankArcaneBackground(); })}
+        onRemoveArcaneBackground={() => update(id, (c) => { c.arcaneBackground = null; })}
+        onChangeName={(name) => update(id, (c) => { if (c.arcaneBackground) c.arcaneBackground.name = name; })}
+        onChangeSkillName={(name) => update(id, (c) => { if (c.arcaneBackground) c.arcaneBackground.arcaneSkillName = name; })}
+        onChangeSkillDie={(die) => update(id, (c) => { if (c.arcaneBackground) c.arcaneBackground.arcaneSkillDie = die; })}
+        onSetMaxPP={(n) => update(id, (c) => {
+          if (c.arcaneBackground) {
+            c.arcaneBackground.powerPoints.max = n;
+            c.arcaneBackground.powerPoints.current = Math.min(c.arcaneBackground.powerPoints.current, n);
+          }
+        })}
+        onSpendPP={() => spendPP(id, 1)}
+        onRestorePP={() => restorePP(id, 1)}
+        onResetPP={() => resetPP(id)}
+        onAddPower={() => update(id, (c) => { c.arcaneBackground?.powers.push(newPower()); })}
+        onChangePower={(pid, patch) => update(id, (c) => {
+          const p = c.arcaneBackground?.powers.find((x) => x.id === pid);
+          if (p) Object.assign(p, patch);
+        })}
+        onRemovePower={(pid) => update(id, (c) => {
+          if (c.arcaneBackground) c.arcaneBackground.powers = c.arcaneBackground.powers.filter((x) => x.id !== pid);
+        })}
+        onCast={(pid) => castPower(id, pid)}
       />
 
       <DiceLog entries={character.rollLog} onClear={() => clearLog(id)} />
