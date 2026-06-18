@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { SheetPage } from './SheetPage';
 import { useCharacterStore } from '../store/characterStore';
 import { blankCharacter } from '../domain/defaults';
+import { toughness } from '../domain/derived';
 
 beforeEach(() => {
   useCharacterStore.setState({ roster: [], activeId: null, lastError: null });
@@ -56,6 +57,21 @@ describe('SheetPage — powers', () => {
       const cc = useCharacterStore.getState().roster.find((x) => x.id === c.id)!;
       expect(cc.arcaneBackground!.powerPoints.current).toBe(3);
       expect(cc.rollLog[0].label).toBe('Bolt');
+    });
+  });
+});
+
+describe('SheetPage — edge modifiers', () => {
+  it('adding an edge with a toughness modifier raises Toughness', async () => {
+    const c = blankCharacter('Mod'); // vigor d4 -> toughness 4
+    useCharacterStore.setState({ roster: [c], activeId: c.id });
+    renderAt(c.id);
+    await userEvent.click(await screen.findByRole('button', { name: /add edge/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /add modifier/i }));
+    await waitFor(() => {
+      const cc = useCharacterStore.getState().roster.find((x) => x.id === c.id)!;
+      expect(cc.edgesHindrances[0].modifiers[0]).toMatchObject({ target: 'toughness', value: 1 });
+      expect(toughness(cc)).toBe(5); // 4 + 1
     });
   });
 });

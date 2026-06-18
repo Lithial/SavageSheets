@@ -52,7 +52,7 @@ describe('traitPenalty', () => {
   });
 });
 
-import { modifierTotal, traitModifierTotal } from './derived';
+import { traitModifierTotal } from './derived';
 
 function withEdgeMods(mods: Array<{ target: string; traitName?: string; value: number }>): Character {
   return make((c) => {

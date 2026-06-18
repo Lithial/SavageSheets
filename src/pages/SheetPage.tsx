@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useCharacterStore } from '../store/characterStore';
-import { newId, blankArcaneBackground, newPower } from '../domain/defaults';
+import { newId, blankArcaneBackground, newPower, newStatModifier } from '../domain/defaults';
 import { parry, toughness, pace } from '../domain/derived';
 import type { AttributeKey } from '../domain/types';
 import { SheetHeader } from '../components/SheetHeader';
@@ -94,13 +94,25 @@ export function SheetPage() {
       <EdgesHindrancesPanel
         items={character.edgesHindrances}
         onAdd={(type) => update(id, (c) => {
-          c.edgesHindrances.push({ id: newId(), name: '', type, severity: type === 'hindrance' ? 'minor' : null, notes: '' });
+          c.edgesHindrances.push({ id: newId(), name: '', type, severity: type === 'hindrance' ? 'minor' : null, notes: '', modifiers: [] });
         })}
         onChange={(eid, patch) => update(id, (c) => {
           const it = c.edgesHindrances.find((x) => x.id === eid);
           if (it) Object.assign(it, patch);
         })}
         onRemove={(eid) => update(id, (c) => { c.edgesHindrances = c.edgesHindrances.filter((x) => x.id !== eid); })}
+        onAddModifier={(eid) => update(id, (c) => {
+          const it = c.edgesHindrances.find((x) => x.id === eid);
+          if (it) it.modifiers.push(newStatModifier());
+        })}
+        onChangeModifier={(eid, mid, patch) => update(id, (c) => {
+          const m = c.edgesHindrances.find((x) => x.id === eid)?.modifiers.find((x) => x.id === mid);
+          if (m) Object.assign(m, patch);
+        })}
+        onRemoveModifier={(eid, mid) => update(id, (c) => {
+          const it = c.edgesHindrances.find((x) => x.id === eid);
+          if (it) it.modifiers = it.modifiers.filter((x) => x.id !== mid);
+        })}
       />
 
       <GearPanel
