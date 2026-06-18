@@ -35,10 +35,10 @@ describe('blankCharacter', () => {
 import { blankArcaneBackground, newPower } from './defaults';
 
 describe('arcane background factories', () => {
-  it('blankCharacter has no arcane background and is schema v2', () => {
+  it('blankCharacter has no arcane background and is schema v3', () => {
     const c = blankCharacter();
     expect(c.arcaneBackground).toBeNull();
-    expect(c.schemaVersion).toBe(2);
+    expect(c.schemaVersion).toBe(3);
   });
 
   it('blankArcaneBackground has a d4 arcane skill, 10/10 PP, and no powers', () => {
@@ -53,5 +53,20 @@ describe('arcane background factories', () => {
     const b = newPower();
     expect(a.id).not.toBe(b.id);
     expect(a.ppCost).toBe(1);
+  });
+});
+
+import { newStatModifier } from './defaults';
+
+describe('stat modifiers', () => {
+  it('blankCharacter is schema v3', () => {
+    expect(blankCharacter().schemaVersion).toBe(3);
+  });
+
+  it('newStatModifier defaults to a +1 toughness modifier with a unique id', () => {
+    const a = newStatModifier();
+    const b = newStatModifier();
+    expect(a).toMatchObject({ target: 'toughness', traitName: '', value: 1 });
+    expect(a.id).not.toBe(b.id);
   });
 });

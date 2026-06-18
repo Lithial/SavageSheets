@@ -19,12 +19,22 @@ export interface Skill {
 export type EdgeHindranceType = 'edge' | 'hindrance';
 export type HindranceSeverity = 'minor' | 'major';
 
+export type StatModifierTarget = 'parry' | 'toughness' | 'pace' | 'trait';
+
+export interface StatModifier {
+  id: string;
+  target: StatModifierTarget;
+  traitName: string; // matched against the roll label when target === 'trait'; '' otherwise
+  value: number;     // signed; hindrances use negatives
+}
+
 export interface EdgeOrHindrance {
   id: string;
   name: string;
   type: EdgeHindranceType;
   severity: HindranceSeverity | null; // only meaningful for hindrances
   notes: string;
+  modifiers: StatModifier[];
 }
 
 export interface Weapon {

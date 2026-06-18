@@ -1,6 +1,6 @@
-import type { ArcaneBackground, AttributeKey, Character, DieSides, Power, Skill, TraitDie } from './types';
+import type { ArcaneBackground, AttributeKey, Character, DieSides, Power, Skill, StatModifier, TraitDie } from './types';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const d = (sides: DieSides, bonus = 0): TraitDie => ({ sides, bonus });
 
@@ -28,6 +28,10 @@ export function blankArcaneBackground(): ArcaneBackground {
 
 export function newPower(): Power {
   return { id: newId(), name: 'New Power', ppCost: 1, range: '', duration: '', notes: '' };
+}
+
+export function newStatModifier(): StatModifier {
+  return { id: newId(), target: 'toughness', traitName: '', value: 1 };
 }
 
 export function blankCharacter(name = 'New Hero'): Character {
