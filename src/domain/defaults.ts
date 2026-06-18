@@ -1,6 +1,6 @@
-import type { AttributeKey, Character, DieSides, Skill, TraitDie } from './types';
+import type { ArcaneBackground, AttributeKey, Character, DieSides, Power, Skill, TraitDie } from './types';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const d = (sides: DieSides, bonus = 0): TraitDie => ({ sides, bonus });
 
@@ -14,6 +14,20 @@ export const CORE_SKILLS: Array<{ name: string; attribute: AttributeKey }> = [
 
 export function newId(): string {
   return crypto.randomUUID();
+}
+
+export function blankArcaneBackground(): ArcaneBackground {
+  return {
+    name: '',
+    arcaneSkillName: 'Spellcasting',
+    arcaneSkillDie: d(4),
+    powerPoints: { current: 10, max: 10 },
+    powers: [],
+  };
+}
+
+export function newPower(): Power {
+  return { id: newId(), name: 'New Power', ppCost: 1, range: '', duration: '', notes: '' };
 }
 
 export function blankCharacter(name = 'New Hero'): Character {
@@ -43,6 +57,7 @@ export function blankCharacter(name = 'New Hero'): Character {
     weapons: [],
     armor: [],
     gear: [],
+    arcaneBackground: null,
     status: { shaken: false, wounds: 0, fatigue: 0 },
     rollLog: [],
     updatedAt: now,

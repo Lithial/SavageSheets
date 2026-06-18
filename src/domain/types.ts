@@ -54,6 +54,23 @@ export interface GearItem {
   notes: string;
 }
 
+export interface Power {
+  id: string;
+  name: string;
+  ppCost: number;
+  range: string;
+  duration: string;
+  notes: string;
+}
+
+export interface ArcaneBackground {
+  name: string;
+  arcaneSkillName: string;
+  arcaneSkillDie: TraitDie;
+  powerPoints: { current: number; max: number };
+  powers: Power[];
+}
+
 export interface Status {
   shaken: boolean;
   wounds: number;  // 0..MAX_WOUNDS (MAX_WOUNDS = Incapacitated)
@@ -85,6 +102,7 @@ export interface Character {
   weapons: Weapon[];
   armor: Armor[];
   gear: GearItem[];
+  arcaneBackground: ArcaneBackground | null;
   status: Status;
   rollLog: RollLogEntry[];
   updatedAt: number;

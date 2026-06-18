@@ -31,3 +31,27 @@ describe('blankCharacter', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+import { blankArcaneBackground, newPower } from './defaults';
+
+describe('arcane background factories', () => {
+  it('blankCharacter has no arcane background and is schema v2', () => {
+    const c = blankCharacter();
+    expect(c.arcaneBackground).toBeNull();
+    expect(c.schemaVersion).toBe(2);
+  });
+
+  it('blankArcaneBackground has a d4 arcane skill, 10/10 PP, and no powers', () => {
+    const ab = blankArcaneBackground();
+    expect(ab.arcaneSkillDie).toEqual({ sides: 4, bonus: 0 });
+    expect(ab.powerPoints).toEqual({ current: 10, max: 10 });
+    expect(ab.powers).toEqual([]);
+  });
+
+  it('newPower returns a unique id and zero-ish defaults', () => {
+    const a = newPower();
+    const b = newPower();
+    expect(a.id).not.toBe(b.id);
+    expect(a.ppCost).toBe(1);
+  });
+});
