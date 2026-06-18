@@ -128,3 +128,50 @@ describe('characterStore load() merge contract', () => {
     expect(sharedEntries[0].name).toBe('Shared (DB)');
   });
 });
+
+import { blankArcaneBackground } from '../domain/defaults';
+
+describe('characterStore — powers', () => {
+  function withAB(store: ReturnType<typeof makeCharacterStore>, id: string, patch: (c: Character) => void) {
+    store.getState().update(id, (c) => { c.arcaneBackground = blankArcaneBackground(); patch(c); });
+  }
+
+  it('casts a power: rolls the arcane skill, spends PP, and logs it', async () => {
+    // arcane skill d8 -> 5, wild d6 -> 2 ; total 5 ; spend 3 of 10
+    const { store } = setup(fixedRng([[8, 5], [6, 2]]));
+    const id = await store.getState().createCharacter();
+    withAB(store, id, (c) => {
+      c.arcaneBackground!.arcaneSkillDie = { sides: 8, bonus: 0 };
+      c.arcaneBackground!.powerPoints = { current: 10, max: 10 };
+      c.arcaneBackground!.powers = [{ id: 'p1', name: 'Bolt', ppCost: 3, range: '', duration: '', notes: '' }];
+    });
+    store.getState().castPower(id, 'p1');
+    const c = store.getState().roster.find((x) => x.id === id)!;
+    expect(c.arcaneBackground!.powerPoints.current).toBe(7);
+    expect(c.rollLog[0].label).toBe('Bolt');
+    expect(c.rollLog[0].total).toBe(5);
+  });
+
+  it('does not cast when current PP is below the power cost', async () => {
+    const { store } = setup(() => 0.5);
+    const id = await store.getState().createCharacter();
+    withAB(store, id, (c) => {
+      c.arcaneBackground!.powerPoints = { current: 2, max: 10 };
+      c.arcaneBackground!.powers = [{ id: 'p1', name: 'Bolt', ppCost: 3, range: '', duration: '', notes: '' }];
+    });
+    store.getState().castPower(id, 'p1');
+    const c = store.getState().roster.find((x) => x.id === id)!;
+    expect(c.arcaneBackground!.powerPoints.current).toBe(2);
+    expect(c.rollLog).toHaveLength(0);
+  });
+
+  it('clamps PP spend/restore/reset to 0..max', async () => {
+    const { store } = setup();
+    const id = await store.getState().createCharacter();
+    withAB(store, id, (c) => { c.arcaneBackground!.powerPoints = { current: 5, max: 10 }; });
+    const cur = () => store.getState().roster.find((x) => x.id === id)!.arcaneBackground!.powerPoints.current;
+    store.getState().spendPP(id, 100); expect(cur()).toBe(0);
+    store.getState().restorePP(id, 100); expect(cur()).toBe(10);
+    store.getState().spendPP(id, 4); store.getState().resetPP(id); expect(cur()).toBe(10);
+  });
+});

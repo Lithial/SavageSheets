@@ -70,6 +70,10 @@ export interface StoreState {
   rollTraitFor: (id: string, label: string, die: TraitDie, opts?: RollTraitOptions) => void;
   rollWeaponDamage: (id: string, weaponId: string) => void;
   clearLog: (id: string) => void;
+  spendPP: (id: string, n: number) => void;
+  restorePP: (id: string, n: number) => void;
+  resetPP: (id: string) => void;
+  castPower: (id: string, powerId: string) => void;
 
   importJson: (json: string) => Promise<void>;
   exportJson: () => Promise<string>;
@@ -211,6 +215,44 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
         }),
 
         clearLog: (id) => mutate(id, (c) => { c.rollLog = []; }),
+
+        spendPP: (id, n) => mutate(id, (c) => {
+          const ab = c.arcaneBackground;
+          if (ab) ab.powerPoints.current = clamp(ab.powerPoints.current - n, 0, ab.powerPoints.max);
+        }),
+        restorePP: (id, n) => mutate(id, (c) => {
+          const ab = c.arcaneBackground;
+          if (ab) ab.powerPoints.current = clamp(ab.powerPoints.current + n, 0, ab.powerPoints.max);
+        }),
+        resetPP: (id) => mutate(id, (c) => {
+          const ab = c.arcaneBackground;
+          if (ab) ab.powerPoints.current = ab.powerPoints.max;
+        }),
+
+        castPower: (id, powerId) => mutate(id, (c) => {
+          const ab = c.arcaneBackground;
+          if (!ab) return;
+          const power = ab.powers.find((p) => p.id === powerId);
+          if (!power) return;
+          if (ab.powerPoints.current < power.ppCost) return; // insufficient PP: no-op
+          const res = rollTrait(
+            { die: ab.arcaneSkillDie, wild: c.isWildCard, modifier: traitPenalty(c.status), tn: 4 },
+            deps.rng,
+          );
+          ab.powerPoints.current = Math.max(0, ab.powerPoints.current - power.ppCost);
+          c.rollLog.unshift({
+            id: newId(),
+            at: deps.now(),
+            label: power.name || 'Power',
+            kind: 'trait',
+            detail: `${formatTraitRoll(res)}; spent ${power.ppCost} PP (${ab.powerPoints.current} left)`,
+            total: res.total,
+            success: res.success,
+            raises: res.raises,
+            criticalFailure: res.criticalFailure,
+          });
+          c.rollLog = c.rollLog.slice(0, LOG_LIMIT);
+        }),
 
         importJson: async (json) => {
           await tracked('Import failed', async () => {
