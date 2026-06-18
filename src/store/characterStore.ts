@@ -5,7 +5,7 @@ import { MAX_FATIGUE, MAX_WOUNDS } from '../domain/types';
 import { blankCharacter, newId } from '../domain/defaults';
 import { rollTrait, rollDamage, type Rng } from '../domain/dice';
 import { formatTraitRoll, formatDamageRoll } from '../domain/format';
-import { traitPenalty } from '../domain/derived';
+import { traitPenalty, traitModifierTotal } from '../domain/derived';
 import { characterRepository, type CharacterRepository } from '../persistence/repository';
 
 const LOG_LIMIT = 50;
@@ -179,7 +179,7 @@ export function makeCharacterStore(deps: StoreDeps): UseBoundStore<StoreApi<Stor
 
         rollTraitFor: (id, label, die, opts) => mutate(id, (c) => {
           const wild = opts?.wildOverride ?? c.isWildCard;
-          const modifier = (opts?.modifier ?? 0) + traitPenalty(c.status);
+          const modifier = (opts?.modifier ?? 0) + traitPenalty(c.status) + traitModifierTotal(c, label);
           const res = rollTrait({ die, wild, modifier, tn: opts?.tn ?? 4 }, deps.rng);
           c.rollLog.unshift({
             id: newId(),

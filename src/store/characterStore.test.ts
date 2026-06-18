@@ -175,3 +175,20 @@ describe('characterStore — powers', () => {
     store.getState().spendPP(id, 4); store.getState().resetPP(id); expect(cur()).toBe(10);
   });
 });
+
+describe('characterStore — trait modifiers', () => {
+  it('adds a matching edge trait modifier to a trait roll', async () => {
+    // Notice skill d6 -> 3, wild d6 -> 2 ; +2 from edge "Alertness" => total 5
+    const { store } = setup(fixedRng([[6, 3], [6, 2]]));
+    const id = await store.getState().createCharacter();
+    store.getState().update(id, (c) => {
+      c.edgesHindrances.push({
+        id: 'e1', name: 'Alertness', type: 'edge', severity: null, notes: '',
+        modifiers: [{ id: 'm1', target: 'trait', traitName: 'Notice', value: 2 }],
+      });
+    });
+    store.getState().rollTraitFor(id, 'Notice', { sides: 6, bonus: 0 });
+    const c = store.getState().roster.find((x) => x.id === id)!;
+    expect(c.rollLog[0].total).toBe(5); // max(3,2) + 2
+  });
+});
